@@ -12,3 +12,9 @@ puts "Loading PostgreSQL Data dump into local database with command:"
 puts cmd
 system(cmd)
 
+merchant = Merchant.first
+
+if merchant && Coupon.count == 0
+  merchant.coupons.create!(name: "Half Off", code: "HALF50", discount_value: 50, discount_type: "percent", active: true)
+  merchant.coupons.create!(name: "Ten Dollars Off", code: "TENOFF", discount_value: 10, discount_type: "dollar", active: true)
+end
