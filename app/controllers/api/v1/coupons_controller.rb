@@ -4,7 +4,18 @@ class Api::V1::CouponsController < ApplicationController
 
   def index
     merchant = Merchant.find(params[:merchant_id])
-    render json: CouponSerializer.new(merchant.coupons), status: :ok
+
+    if params[:status] == "active" || params[:status] == "true"
+      filtered_coupons = merchant.coupons.where(active: true)
+    elsif params[:status] == "inactive" || params[:status] == "false"
+      filtered_coupons = merchant.coupons.where(active: false)
+    else
+      filtered_coupons = merchant.coupons
+    end
+
+      Rails.logger.debug "✅ Filtered Coupons: #{filtered_coupons.pluck(:id, :active)}"
+    
+    render json: CouponSerializer.new(filtered_coupons), status: :ok
   end
 
   def show
@@ -28,11 +39,10 @@ class Api::V1::CouponsController < ApplicationController
       return
     end
 
-    coupon = Coupon.find_or_create_by(code: params[:code]) do |c|
-      c.name = params[:name]
-      c.discount_value = params[:discount_value]
-      c.discount_type = params[:discount_type]
-      c.active = params[:active]
+    coupon = Coupon.find_by(code: params[:code])
+
+    if coupon.nil? 
+      coupon = Coupon.create!(coupon_params)
     end
 
     if merchant.coupons.exists?(coupon.id)
@@ -44,7 +54,13 @@ class Api::V1::CouponsController < ApplicationController
   end
 
   def update
-    coupon = Coupon.find(params[:id])
+    merchant = Merchant.find(params[:merchant_id])
+    coupon = merchant.coupons.find_by(id: params[:id])
+
+    if coupon.nil? 
+      render json: ErrorSerializer.format_errors(["Coupon not found for this Merchant"]), status: :not_found
+      return
+    end
 
     if params[:active] == false || params[:active] == "false"
       if coupon.invoices.where(status: "pending").exists? 
@@ -52,18 +68,30 @@ class Api::V1::CouponsController < ApplicationController
         return
       end
     end
+
+    if params[:active] == true || params[:active] == "true"
+      if merchant.coupons.where(active: true).count >= 5
+        render json: ErrorSerializer.format_errors(["Merchant can only have 5 active coupons at a time"]), status: :unprocessable_entity
+        return
+      end
+    end
     
     if coupon.update(coupon_params)
       render json: CouponSerializer.new(coupon), status: :ok
+      return
     else 
       render json: ErrorSerializer.format_errors(coupon.errors.full_messages), status: :unprocessable_entity
+      return
     end
   end
 
   private 
 
   def coupon_params
-    params.permit(:name, :code, :discount_value, :discount_type, :active)
+    permitted_params = params.permit(:name, :code, :discount_value, :discount_type, :active)
+    permitted_params[:active] = true if permitted_params[:active] === "true"
+    permitted_params[:active] = false if permitted_params[:active] === "false"
+    permitted_params
   end
 
   def set_merchant
