@@ -8,18 +8,26 @@ class Api::V1::CouponsController < ApplicationController
   end
 
   def show
-    coupon = Coupon.find(id: params[:id], merchant_id: params[:merchant_id])
+    coupon = set_coupon
 
     if coupon
       render json: CouponSerializer.new(coupon), status: :ok
+      return
     else
-      render json: { error: "Coupon not found for this merchant" }, status: :not_found
+      render json: ErrorSerializer.format_errors(["Coupon not found for this merchant"]), status: :not_found
+      return
     end
     render json: CouponSerializer.new(coupon), status: :ok
   end
 
   def create
     merchant = Merchant.find(params[:merchant_id])
+
+    if merchant.coupons.where(active: true).count >= 5
+      render json: ErrorSerializer.format_errors(["Merchant can only have 5 active coupons at a time"]), status: :unprocessable_entity
+      return
+    end
+
     coupon = Coupon.find_or_create_by(code: params[:code]) do |c|
       c.name = params[:name]
       c.discount_value = params[:discount_value]
@@ -27,18 +35,28 @@ class Api::V1::CouponsController < ApplicationController
       c.active = params[:active]
     end
 
-    merchant.coupons << coupon unless merchant.coupons.include?(coupon)
-
-    render json: CouponSerilaizer.new(coupon), status: :created
+    if merchant.coupons.exists?(coupon.id)
+      render json: ErrorSerializer.format_errors(["Merchant already has this coupon"]), status: :unprocessable_entity
+    else 
+      merchant.coupons << coupon
+      render json: CouponSerializer.new(coupon), status: :created
+    end
   end
 
   def update
     coupon = Coupon.find(params[:id])
 
+    if params[:active] == false || params[:active] == "false"
+      if coupon.invoices.where(status: "pending").exists? 
+        render json: ErrorSerializer.format_errors(["Cannot deactivate a coupon on a pending invoice"]), status: :unprocessable_entity
+        return
+      end
+    end
+    
     if coupon.update(coupon_params)
       render json: CouponSerializer.new(coupon), status: :ok
     else 
-      render json: { errors: coupon.errors.full_messages }, status: :unprocessable_entity
+      render json: ErrorSerializer.format_errors(coupon.errors.full_messages), status: :unprocessable_entity
     end
   end
 
@@ -50,5 +68,9 @@ class Api::V1::CouponsController < ApplicationController
 
   def set_merchant
     Merchant.find(params[:merchant_id])
+  end
+
+  def set_coupon
+    Merchant.find(params[:merchant_id]).coupons.find_by(id: params[:id])
   end
 end
