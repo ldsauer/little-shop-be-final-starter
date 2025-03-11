@@ -58,11 +58,13 @@ class Merchant < ApplicationRecord
 
   private 
 
+
   def active_coupons_limit
-    active_coupon_count = coupons.reload.where(active: true).count
+    active_coupon_count = merchant_coupons.joins(:coupon).where(coupons: { active: true }).count
   
     if active_coupon_count >= 5
       errors.add(:base, "A Merchant can only have 5 active Coupons at a time.")
     end
   end
+  
 end

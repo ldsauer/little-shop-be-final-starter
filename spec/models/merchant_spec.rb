@@ -95,31 +95,22 @@ describe Merchant, type: :model do
     end
   end
 
-  describe "cutsom validations" do
+  describe "custom validations" do
     it "does not allow more than 5 active coupons per merchant" do 
-      merchant = Merchant.create!(name: "Test Merchant")
-
-      5.times do |i|
-        merchant.coupons.create!(
-          name: "Coupon #{i}",
-          code: "CODE#{i}",
-          discount_value: 10,
-          discount_type: "percent",
-          active: true
-        )
+      merchant = create(:merchant)
+  
+      5.times do 
+        coupon = create(:coupon, active: true) 
+        create(:merchant_coupon, merchant: merchant, coupon: coupon)
       end
-    
-      # Try to create a 6th active coupon
-      new_coupon = merchant.coupons.build(
-        name: "Extra Coupon",
-        code: "EXTRA100",
-        discount_value: 20,
-        discount_type: "percent",
-        active: true
-      )
-    
-      expect(new_coupon.valid?).to eq(false) # Ensure the coupon fails validation
-      expect(new_coupon.errors[:base]).to include("A Merchant can only have 5 active Coupons at a time.")
+      
+      new_coupon = create(:coupon, active: true) 
+      new_merchant_coupon = create(:merchant_coupon, merchant: merchant, coupon: new_coupon)
+      
+      merchant.validate
+      
+      expect(merchant.valid?).to eq(false) #it is technically valid because it's getting created jsut not assigned? 
+      expect(merchant.errors[:base]).to include("A Merchant can only have 5 active Coupons at a time.")
     end
   end
 end
