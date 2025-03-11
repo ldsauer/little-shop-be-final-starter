@@ -200,6 +200,33 @@ describe "Merchant endpoints", :type => :request do
       
       expect(response).to have_http_status(:no_content)
     end
+  end
 
+  describe "GET /api/v1/merchants" do 
+    it "returns all merchants" do 
+      create_list(:merchant, 5)
+      
+      get "/api/v1/merchants"
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, symbolize_names: true)
+
+      expect(json[:data]).to be_an(Array)
+      expect(json[:data].first).to include(:id, :type, :attributes)
+      
+      expect(json[:data].size).to eq(5)
+      expect(json[:data].first[:attributes]).to include(:name)
+    end
+
+    it "returns an empty array if there are no merchants" do 
+      Merchant.destroy_all
+
+      get "/api/v1/merchants"
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, symbolize_names: true)
+
+      expect(json[:data]).to eq([])
+    end
   end
 end

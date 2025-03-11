@@ -8,7 +8,9 @@ describe Merchant, type: :model do
   describe 'relationships' do
     it { should have_many :items }
     it { should have_many :invoices }
+    it { should have_many (:merchant_coupons) }
     it { should have_many(:customers).through(:invoices) }
+    it { should have_many(:coupons).through(:merchant_coupons) }
   end
 
   describe "class methods" do
@@ -90,6 +92,34 @@ describe Merchant, type: :model do
       expect(merchant.invoices_filtered_by_status("packaged")).to eq([inv_3_packaged])
       expect(merchant.invoices_filtered_by_status("returned")).to eq([inv_5_returned])
       expect(other_merchant.invoices_filtered_by_status("packaged")).to eq([inv_4_packaged])
+    end
+  end
+
+  describe "cutsom validations" do
+    it "does not allow more than 5 active coupons per merchant" do 
+      merchant = Merchant.create!(name: "Test Merchant")
+
+      5.times do |i|
+        merchant.coupons.create!(
+          name: "Coupon #{i}",
+          code: "CODE#{i}",
+          discount_value: 10,
+          discount_type: "percent",
+          active: true
+        )
+      end
+    
+      # Try to create a 6th active coupon
+      new_coupon = merchant.coupons.build(
+        name: "Extra Coupon",
+        code: "EXTRA100",
+        discount_value: 20,
+        discount_type: "percent",
+        active: true
+      )
+    
+      expect(new_coupon.valid?).to eq(false) # Ensure the coupon fails validation
+      expect(new_coupon.errors[:base]).to include("A Merchant can only have 5 active Coupons at a time.")
     end
   end
 end

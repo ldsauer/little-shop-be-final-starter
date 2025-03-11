@@ -4,9 +4,10 @@ class Merchant < ApplicationRecord
   has_many :invoices, dependent: :destroy
   has_many :customers, through: :invoices
   has_many :merchant_coupons
-  has_many :coupons, through: :merchant_coupons
+  has_many :coupons, through: :merchant_coupons, validate: true
 
   validate :active_coupons_limit
+
   # has_many :invoice_items, through: :invoices
   # has_many :transactions, through: :invoices
 
@@ -58,7 +59,9 @@ class Merchant < ApplicationRecord
   private 
 
   def active_coupons_limit
-    if coupons.where(active: true).count >= 5 # >= 5 && active_changed? && active
+    active_coupon_count = coupons.reload.where(active: true).count
+  
+    if active_coupon_count >= 5
       errors.add(:base, "A Merchant can only have 5 active Coupons at a time.")
     end
   end

@@ -68,4 +68,59 @@ RSpec.describe "Merchant invoices endpoints" do
     expect(json[:data].count).to eq(4)
     expect(json[:data].map { |invoice| invoice[:id] }).to match_array([@invoice1.id.to_s, @invoice2.id.to_s, @invoice3.id.to_s, @invoice4.id.to_s])
   end
+
+  describe "POST /api/v1/merchants/:merchant_id/invoices" do
+    it "creates a new invoice for a merchant" do
+      invoice_params = {
+        customer_id: @customer1.id,
+        merchant_id: @merchant1.id,
+        status: "shipped"
+      }
+
+      headers = { "CONTENT_TYPE" => "application/json" }
+
+      post "/api/v1/merchants/#{@merchant1.id}/invoices", params: invoice_params.to_json, headers: headers
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body, symbolize_names: true)
+
+      expect(json[:data]).to include(:id, :type, :attributes)
+      expect(json[:data][:attributes][:customer_id]).to eq(@customer1.id)
+      expect(json[:data][:attributes][:merchant_id]).to eq(@merchant1.id)
+      expect(json[:data][:attributes][:status]).to eq("shipped")
+    end
+
+    it "returns an error when missing required fields" do 
+      invalid_invoice_params = {
+        merchant_id: @merchant1.id,
+        status: "shipped"
+      }
+
+      headers = { "CONTENT_TYPE" => "application/json" }
+
+      post "/api/v1/merchants/#{@merchant1.id}/invoices", params: invalid_invoice_params.to_json, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body, symbolize_names: true)
+
+      expect(json[:errors]).to include("Customer must exist")
+    end
+
+    it "returns an error when the merchant does not exist" do
+      invoice_params = {
+        customer_id: @customer1.id,
+        merchant_id: 999999, # Non-existent merchant ID
+        status: "shipped"
+      }
+
+      headers = { "CONTENT_TYPE" => "application/json" }
+
+      post "/api/v1/merchants/999999/invoices", params: invoice_params.to_json, headers: headers
+
+      expect(response).to have_http_status(:not_found)
+      json = JSON.parse(response.body, symbolize_names: true)
+
+      expect(json[:errors]).to include("Couldn't find Merchant with 'id'=999999")
+    end
+  end
 end
