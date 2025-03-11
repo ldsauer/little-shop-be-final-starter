@@ -6,4 +6,15 @@ class Invoice < ApplicationRecord
   has_many :transactions, dependent: :destroy
 
   validates :status, presence: true, inclusion: { in: ["shipped", "packaged", "returned", "pending"] }
+  validate :one_coupon_per_merchant
+
+  private
+  
+  def one_coupon_per_merchant
+    return if coupon_id.nil? 
+
+    if merchant.invoices.where(coupon_id: coupon_id).exists?
+      errors.add(:coupon_id, "This coupon has already been used by this Merchant")
+    end
+  end
 end

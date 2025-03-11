@@ -5,17 +5,17 @@ class Api::V1::CouponsController < ApplicationController
   def index
     merchant = Merchant.find(params[:merchant_id])
 
-    if params[:status] == "active" || params[:status] == "true"
-      filtered_coupons = merchant.coupons.where(active: true)
-    elsif params[:status] == "inactive" || params[:status] == "false"
-      filtered_coupons = merchant.coupons.where(active: false)
-    else
-      filtered_coupons = merchant.coupons
-    end
-
-      Rails.logger.debug "✅ Filtered Coupons: #{filtered_coupons.pluck(:id, :active)}"
+      if params[:status] == "active" || params[:status] == "true"
+        filtered_coupons = merchant.coupons.where(active: true)
+      elsif params[:status] == "inactive" || params[:status] == "false"
+        filtered_coupons = merchant.coupons.where(active: false)
+      else
+        filtered_coupons = merchant.coupons
+      end
     
     render json: CouponSerializer.new(filtered_coupons), status: :ok
+  rescue ActiveRecord::RecordNotFound => e
+    render json: ErrorSerializer.format_errors([e.message]), status: :not_found
   end
 
   def show
@@ -53,6 +53,8 @@ class Api::V1::CouponsController < ApplicationController
     end
   end
 
+ 
+  
   def update
     merchant = Merchant.find(params[:merchant_id])
     coupon = merchant.coupons.find_by(id: params[:id])
@@ -75,7 +77,7 @@ class Api::V1::CouponsController < ApplicationController
         return
       end
     end
-    
+
     if coupon.update(coupon_params)
       render json: CouponSerializer.new(coupon), status: :ok
       return
@@ -89,8 +91,15 @@ class Api::V1::CouponsController < ApplicationController
 
   def coupon_params
     permitted_params = params.permit(:name, :code, :discount_value, :discount_type, :active)
-    permitted_params[:active] = true if permitted_params[:active] === "true"
-    permitted_params[:active] = false if permitted_params[:active] === "false"
+
+    if permitted_params[:active].nil?
+      permitted_params[:active] = true
+    elsif permitted_params[:active] == "false"
+      permitted_params[:active] = false
+    elsif permitted_params[:active] == "true"
+      permitted_params[:active] = true
+    end
+
     permitted_params
   end
 
