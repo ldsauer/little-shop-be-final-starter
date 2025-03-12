@@ -19,10 +19,6 @@ RSpec.describe "Merchant Coupons API", type: :request do
       )
   end
 
-  # describe "GET /index" do
-  #   pending "add some examples (or delete) #{__FILE__}"
-  # end
-
   describe "GET /api/v1/merchants/:merchant_id/coupons" do
     it "returns all coupons for a merchant" do 
       get "/api/v1/merchants/#{@merchant.id}/coupons"
@@ -99,30 +95,6 @@ RSpec.describe "Merchant Coupons API", type: :request do
 
       expect(json[:data].size).to eq(2)
     end
-
-    # it "serializes multiple coupons correctly" do
-    #   get "/api/v1/merchants/#{@merchant.id}/coupons"
-
-    #   expect(response).to have_http_status(:ok)
-    #   json = JSON.parse(response.body, symbolize_names: true)
-
-    #   expect(json[:data]).to be_an(Array)
-    #   expect(json[:data].size).to eq(2)
-
-    #   json[:data].each do |coupon|
-    #     expect(coupon).to have_key(:id)
-    #     expect(coupon).to have_key(:type)
-    #     expect(coupon[:type]).to eq("coupon")
-
-    #     expect(coupon).to have_key(:attributes)
-    #     expect(coupon[:attributes]).to have_key(:name)
-    #     expect(coupon[:attributes]).to have_key(:code)
-    #     expect(coupon[:attributes]).to have_key(:discount_value)
-    #     expect(coupon[:attributes][:discount_value]).to be_a(String) # Should be string due to JSONAPI
-    #     expect(coupon[:attributes]).to have_key(:discount_type)
-    #     expect(coupon[:attributes]).to have_key(:active)
-    #   end
-    # end
   end
 
   describe "GET /api/v1/merchants/:merchant_id/coupons/:id" do
